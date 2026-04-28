@@ -1,17 +1,25 @@
+ /* Đảm bảo root chiếm toàn bộ màn hình */
+    #root { min-height: 100vh; }
+</style>
+
+
 <script type="text/babel">
     const { useState, useEffect, useCallback, useRef } = React;
 
     function App() {
+        // Quản lý trạng thái input và kích thước thực tế
         const [inputRows, setInputRows] = useState(10);
         const [inputCols, setInputCols] = useState(10);
         const [rows, setRows] = useState(10);
         const [cols, setCols] = useState(10);
         const [grid, setGrid] = useState([]);
 
+        // Ref để lưu giá trị lưới nhằm truy cập tức thì trong event listeners
         const gridRef = useRef([]);
         const isPaintingRef = useRef(false);
         const paintModeRef = useRef(true);
 
+        // Hàm khởi tạo lưới
         const initializeGrid = useCallback((r, c) => {
             const newGrid = Array(r).fill(null).map(() => Array(c).fill(false));
             gridRef.current = newGrid;
@@ -20,20 +28,24 @@
             setCols(c);
         }, []);
 
+        // Chạy lần đầu khi ứng dụng load
         useEffect(() => {
             initializeGrid(10, 10);
         }, [initializeGrid]);
 
+        // Xử lý tạo lưới mới
         const handleGenerate = () => {
-            const r = Math.min(Math.max(1, inputRows), 100);
-            const c = Math.min(Math.max(1, inputCols), 100);
+            const r = Math.min(Math.max(1, parseInt(inputRows) || 1), 100);
+            const c = Math.min(Math.max(1, parseInt(inputCols) || 1), 100);
             setInputRows(r);
             setInputCols(c);
             initializeGrid(r, c);
         };
 
+        // Xóa sạch lưới hiện tại
         const handleClear = () => initializeGrid(rows, cols);
 
+        // Cập nhật trạng thái ô
         const setCellState = (rowIndex, colIndex, value) => {
             if (gridRef.current[rowIndex][colIndex] === value) return;
             const nextGrid = [...gridRef.current];
@@ -43,23 +55,33 @@
             setGrid(nextGrid);
         };
 
+        // Xử lý sự kiện nhấn chuột
         const handleMouseDown = (e, rowIndex, colIndex) => {
             e.preventDefault();
             isPaintingRef.current = true;
+            // Chuột phải (button 2) luôn là chế độ xóa
             if (e.button === 2) {
                 paintModeRef.current = false;
             } else {
+                // Chuột trái: đảo trạng thái ô đang nhấn và dùng trạng thái đó làm mode vẽ
                 paintModeRef.current = !gridRef.current[rowIndex][colIndex];
             }
             setCellState(rowIndex, colIndex, paintModeRef.current);
         };
 
+        // Xử lý di chuyển chuột vào ô (kéo để vẽ)
         const handleMouseEnter = (rowIndex, colIndex) => {
-            if (isPaintingRef.current) setCellState(rowIndex, colIndex, paintModeRef.current);
+            if (isPaintingRef.current) {
+                setCellState(rowIndex, colIndex, paintModeRef.current);
+            }
         };
 
-        const handleMouseUp = () => isPaintingRef.current = false;
+        // Ngừng vẽ khi nhả chuột
+        const handleMouseUp = () => {
+            isPaintingRef.current = false;
+        };
 
+        // Hiển thị tọa độ (Hàng tính từ dưới lên)
         const renderSummary = () => {
             if (!grid || grid.length === 0) return null;
             let hasAnyPixel = false;
@@ -70,60 +92,118 @@
                 if (filledCols.length > 0) {
                     hasAnyPixel = true;
                     return (
-                        <div key={actualRowNumber} class="py-2 border-b border-gray-100 last:border-0 hover:bg-blue-50 px-2 rounded">
-                            <span class="font-semibold text-gray-700 text-sm">Hàng {actualRowNumber}:</span> 
-                            <span class="ml-2 text-xs text-gray-500 italic">(Cột: </span>
-                            <span class="font-mono text-blue-600 font-bold text-sm">{filledCols.join(', ')}</span>
-                            <span class="text-xs text-gray-500 italic">)</span>
+                        <div key={actualRowNumber} className="py-2 border-b border-gray-100 last:border-0 hover:bg-blue-50 px-2 rounded">
+                            <span className="font-semibold text-gray-700 text-sm">Hàng {actualRowNumber}:</span> 
+                            <span className="ml-2 text-xs text-gray-500 italic">(Cột: </span>
+                            <span className="font-mono text-blue-600 font-bold text-sm">{filledCols.join(', ')}</span>
+                            <span className="text-xs text-gray-500 italic">)</span>
                         </div>
                     );
                 }
                 return null;
             });
-            return hasAnyPixel ? summaryElements : <div class="text-center py-10 text-gray-400 text-sm">Chưa vẽ gì...</div>;
+            return hasAnyPixel ? summaryElements : <div className="text-center py-10 text-gray-400 text-sm">Chưa có ô nào được tô...</div>;
         };
 
         return (
-            <div class="min-h-screen p-4 md:p-6" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onContextMenu={(e) => e.preventDefault()}>
-                <div class="max-w-6xl mx-auto space-y-6">
-                    <header class="text-center space-y-1">
-                        <h1 class="text-2xl font-extrabold text-slate-800">Pixel for Minecraft <span class="text-blue-600">Mapper</span></h1>
-                        <p class="text-slate-500 text-sm">Design by yinx2501</p>
+            <div 
+                className="min-h-screen p-4 md:p-6" 
+                onMouseUp={handleMouseUp} 
+                onMouseLeave={handleMouseUp} 
+                onContextMenu={(e) => e.preventDefault()}
+            >
+                <div className="max-w-6xl mx-auto space-y-6">
+                    <header className="text-center space-y-1">
+                        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                            Pixel Art <span className="text-blue-600">Minecraft Mapper</span>
+                        </h1>
+                        <p className="text-slate-500 text-sm font-medium">Design by yinx2501</p>
                     </header>
                     
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        <div class="lg:col-span-1 space-y-4">
-                            <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                                <h2 class="text-xs font-bold mb-3 uppercase text-slate-400">Thiết lập</h2>
-                                <div class="space-y-3">
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <input type="number" value={inputRows} onChange={(e) => setInputRows(parseInt(e.target.value) || '')} class="w-full px-2 py-1.5 bg-slate-50 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"/>
-                                        <input type="number" value={inputCols} onChange={(e) => setInputCols(parseInt(e.target.value) || '')} class="w-full px-2 py-1.5 bg-slate-50 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"/>
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        {/* Cột điều khiển */}
+                        <div className="lg:col-span-1 space-y-4 flex flex-col">
+                            <section className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                <h2 className="text-[10px] font-bold mb-3 uppercase tracking-wider text-slate-400">Thiết lập lưới</h2>
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[10px] text-slate-400 mb-1 font-bold">HÀNG</label>
+                                            <input 
+                                                type="number" 
+                                                value={inputRows} 
+                                                onChange={(e) => setInputRows(e.target.value)} 
+                                                className="w-full px-2 py-1.5 bg-slate-50 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] text-slate-400 mb-1 font-bold">CỘT</label>
+                                            <input 
+                                                type="number" 
+                                                value={inputCols} 
+                                                onChange={(e) => setInputCols(e.target.value)} 
+                                                className="w-full px-2 py-1.5 bg-slate-50 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                                            />
+                                        </div>
                                     </div>
-                                    <button onClick={handleGenerate} class="w-full bg-slate-800 text-white font-bold py-2 rounded text-sm">Tạo Mới</button>
-                                    <button onClick={handleClear} class="w-full text-slate-400 text-xs mt-1">Xóa sạch</button>
+                                    <button 
+                                        onClick={handleGenerate} 
+                                        className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded text-sm transition-colors"
+                                    >
+                                        Tạo Lưới Mới
+                                    </button>
+                                    <button 
+                                        onClick={handleClear} 
+                                        className="w-full text-slate-400 hover:text-slate-600 text-xs mt-1 transition-colors"
+                                    >
+                                        Xóa sạch bản vẽ
+                                    </button>
                                 </div>
                             </section>
-                            <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                                <h2 class="text-xs font-bold mb-3 uppercase text-slate-400">Tọa độ</h2>
-                                <div class="bg-slate-50 rounded-lg p-2 overflow-y-auto h-[400px] custom-scrollbar border border-slate-100">
+
+                            <section className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-grow flex flex-col">
+                                <h2 className="text-[10px] font-bold mb-3 uppercase tracking-wider text-slate-400">Tọa độ xuất ra</h2>
+                                <div className="bg-slate-50 rounded-lg p-2 overflow-y-auto h-[400px] custom-scrollbar border border-slate-100 shadow-inner">
                                     {renderSummary()}
                                 </div>
                             </section>
                         </div>
-                        <div class="lg:col-span-3">
-                            <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-full flex flex-col">
-                                <div class="relative flex-grow w-full h-[600px] bg-slate-100 rounded-xl overflow-auto custom-scrollbar border border-slate-200">
-                                    <div class="absolute inset-0 flex items-center justify-center p-10">
-                                        <div class="grid gap-[1px] bg-slate-300 border border-slate-400 shadow-xl" style={{ gridTemplateColumns: `repeat(${cols}, 24px)`, width: 'fit-content' }}>
-                                            {grid.map((row, rowIndex) => row.map((isFilled, colIndex) => (
-                                                <div key={`${rowIndex}-${colIndex}`} onMouseDown={(e) => handleMouseDown(e, rowIndex, colIndex)} onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
-                                                    class={`w-[24px] h-[24px] transition-colors duration-75 ${isFilled ? 'bg-slate-800' : 'bg-white hover:bg-blue-50'}`}
-                                                />
-                                            )))}
+
+                        {/* Cột Canvas */}
+                        <div className="lg:col-span-3">
+                            <section className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 h-full flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-[10px] font-bold uppercase text-slate-400">Khu vực vẽ</span>
+                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold">{cols} x {rows}</span>
+                                </div>
+                                <div className="relative flex-grow w-full h-[600px] bg-slate-100 rounded-xl overflow-auto custom-scrollbar border border-slate-200 shadow-inner">
+                                    <div className="absolute inset-0 flex items-center justify-center p-10">
+                                        <div 
+                                            className="grid gap-[1px] bg-slate-300 border border-slate-400 shadow-2xl" 
+                                            style={{ 
+                                                gridTemplateColumns: `repeat(${cols}, 24px)`, 
+                                                width: 'fit-content' 
+                                            }}
+                                        >
+                                            {grid.map((row, rowIndex) => 
+                                                row.map((isFilled, colIndex) => (
+                                                    <div 
+                                                        key={`${rowIndex}-${colIndex}`} 
+                                                        onMouseDown={(e) => handleMouseDown(e, rowIndex, colIndex)} 
+                                                        onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
+                                                        className={`w-[24px] h-[24px] transition-colors duration-75 cursor-crosshair ${
+                                                            isFilled ? 'bg-slate-800' : 'bg-white hover:bg-blue-50'
+                                                        }`}
+                                                    />
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 </div>
+                                <footer className="mt-4 flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                                    <span>Chuột trái: Vẽ • Chuột phải: Xóa</span>
+                                    <span>Minecraft Coordinates Helper</span>
+                                </footer>
                             </section>
                         </div>
                     </div>
@@ -132,6 +212,7 @@
         );
     }
 
+    // Khởi tạo ứng dụng vào DOM
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
 </script>
