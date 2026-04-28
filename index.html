@@ -202,7 +202,7 @@
             updateOutput();
         }
 
-        // --- XỬ LÝ IMPORT ẢNH ---
+
         document.getElementById('imageInput').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -214,7 +214,7 @@
                     const canvas = document.getElementById('processCanvas');
                     const ctx = canvas.getContext('2d');
 
-                    // Giới hạn ảnh tối đa 50x50 để dễ xây
+
                     let w = img.width;
                     let h = img.height;
                     if (w > 50 || h > 50) {
@@ -279,7 +279,6 @@
         function rgbToHex(r, g, b) {
             return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
         }
-        // --- KẾT THÚC XỬ LÝ ẢNH ---
 
         function paint(cell) {
             if (isErasing) { cell.style.backgroundColor = 'white'; cell.dataset.activeColor = ''; }
