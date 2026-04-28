@@ -37,8 +37,8 @@
         }
 
         .color-dot {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             border-radius: 4px;
             border: 2px solid transparent;
             cursor: pointer;
@@ -92,17 +92,23 @@
                     <div class="color-dot" style="background-color: #eab308;" data-color="#eab308"></div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <input type="number" id="inputCols" value="10" min="1" max="100"
+                    <input type="number" id="inputCols" value="16" min="1" max="100"
                         class="w-12 border border-slate-200 rounded p-1 text-xs text-center">
 
                     <span class="text-slate-300">x</span>
-                    <input type="number" id="inputRows" value="10" min="1" max="100"
+                    <input type="number" id="inputRows" value="16" min="1" max="100"
                         class="w-12 border border-slate-200 rounded p-1 text-xs text-center">
 
                 </div>
                 <button onclick="generateGrid()"
-                    class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded text-[10px] uppercase transition-all">Tạo
+                    class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1 rounded text-[10px] uppercase">Tạo
                     mới</button>
+                <div class="h-6 w-[1px] bg-slate-200 mx-1"></div>
+                <label
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded text-[10px] uppercase cursor-pointer transition-all">
+                    Import Ảnh
+                    <input type="file" id="imageInput" accept="image/*" class="hidden">
+                </label>
             </div>
         </header>
 
@@ -114,15 +120,15 @@
                     <div id="grid" class="grid gap-0 bg-slate-300 border border-slate-400"
                         oncontextmenu="return false;"></div>
                 </div>
-                <div class="w-full mt-2 flex justify-between text-[10px] text-slate-400 font-bold uppercase">
-                    <span>Chuột trái: Vẽ • Chuột phải: Xóa • Kéo để vẽ nhanh</span>
-                    <span id="grid-size-display">10 x 10</span>
+                <div class="w-full mt-2 flex justify-between text-[10px] text-slate-400 font-bold uppercase px-2">
+                    <span>Chuột trái: Vẽ • Chuột phải: Xóa • Cuộn để xem hết</span>
+                    <span id="grid-size-display">16 x 16</span>
                 </div>
             </section>
 
             <section class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 w-full">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
-                    <h2 class="text-[11px] font-bold text-slate-800 uppercase tracking-widest">Tọa độ & Màu sắc</h2>
+                    <h2 class="text-[11px] font-bold text-slate-800 uppercase tracking-widest">Tọa độ xây dựng</h2>
                     <button onclick="clearAll()"
                         class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase">Xóa sạch</button>
                 </div>
@@ -134,10 +140,13 @@
         </div>
     </div>
 
+    <canvas id="processCanvas" class="hidden"></canvas>
+
     <script>
         let isDrawing = false;
         let currentColor = '#0f172a';
         let isErasing = false;
+        const availableColors = ['#0f172a', '#ef4444', '#22c55e', '#3b82f6', '#eab308'];
 
         document.querySelectorAll('.color-dot').forEach(dot => {
             dot.onclick = () => {
@@ -151,8 +160,8 @@
         function generateGrid() {
             const gridEl = document.getElementById('grid');
             const containerEl = document.getElementById('grid-container');
-            const rVal = parseInt(document.getElementById('inputRows').value) || 10;
-            const cVal = parseInt(document.getElementById('inputCols').value) || 10;
+            const rVal = parseInt(document.getElementById('inputRows').value) || 16;
+            const cVal = parseInt(document.getElementById('inputCols').value) || 16;
             const rows = Math.min(Math.max(1, rVal), 100);
             const cols = Math.min(Math.max(1, cVal), 100);
 
@@ -160,12 +169,8 @@
             gridEl.innerHTML = '';
             gridEl.style.gridTemplateColumns = `repeat(${cols + 1}, 30px)`;
 
-            const estimatedWidth = (cols + 1) * 30 + 40;
-            if (estimatedWidth > window.innerWidth) {
-                containerEl.style.justifyContent = 'flex-start';
-            } else {
-                containerEl.style.justifyContent = 'center';
-            }
+            if (((cols + 1) * 30 + 80) > window.innerWidth) containerEl.style.justifyContent = 'flex-start';
+            else containerEl.style.justifyContent = 'center';
 
             for (let r = 0; r < rows; r++) {
                 const rowLabel = document.createElement('div');
@@ -176,15 +181,10 @@
                 for (let c = 0; c < cols; c++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
+                    cell.id = `cell-${rows - r}-${c + 1}`;
                     cell.dataset.row = rows - r;
                     cell.dataset.col = c + 1;
-
-                    cell.onmousedown = (e) => {
-                        e.preventDefault();
-                        isDrawing = true;
-                        isErasing = (e.button === 2);
-                        paint(cell);
-                    };
+                    cell.onmousedown = (e) => { e.preventDefault(); isDrawing = true; isErasing = (e.button === 2); paint(cell); };
                     cell.onmouseenter = () => { if (isDrawing) paint(cell); };
                     gridEl.appendChild(cell);
                 }
@@ -193,7 +193,6 @@
             const corner = document.createElement('div');
             corner.className = 'label-cell border-t border-r';
             gridEl.appendChild(corner);
-
             for (let c = 1; c <= cols; c++) {
                 const colLabel = document.createElement('div');
                 colLabel.className = 'label-cell border-t';
@@ -203,22 +202,93 @@
             updateOutput();
         }
 
+        // --- XỬ LÝ IMPORT ẢNH ---
+        document.getElementById('imageInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.getElementById('processCanvas');
+                    const ctx = canvas.getContext('2d');
+
+                    // Giới hạn ảnh tối đa 50x50 để dễ xây
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > 50 || h > 50) {
+                        const ratio = Math.min(50 / w, 50 / h);
+                        w = Math.floor(w * ratio);
+                        h = Math.floor(h * ratio);
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+
+                    document.getElementById('inputRows').value = h;
+                    document.getElementById('inputCols').value = w;
+                    generateGrid();
+
+                    const imageData = ctx.getImageData(0, 0, w, h).data;
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = (y * w + x) * 4;
+                            const r = imageData[idx];
+                            const g = imageData[idx + 1];
+                            const b = imageData[idx + 2];
+                            const a = imageData[idx + 3];
+
+                            if (a > 128) { // Chỉ lấy pixel không trong suốt
+                                const hex = rgbToHex(r, g, b);
+                                const closest = getClosestColor(hex);
+                                const cell = document.getElementById(`cell-${h - y}-${x + 1}`);
+                                if (cell) {
+                                    cell.style.backgroundColor = closest;
+                                    cell.dataset.activeColor = closest;
+                                }
+                            }
+                        }
+                    }
+                    updateOutput();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function getClosestColor(target) {
+            let minDistance = Infinity;
+            let closest = availableColors[0];
+            const t = hexToRgb(target);
+
+            availableColors.forEach(c => {
+                const curr = hexToRgb(c);
+                const dist = Math.sqrt(Math.pow(t.r - curr.r, 2) + Math.pow(t.g - curr.g, 2) + Math.pow(t.b - curr.b, 2));
+                if (dist < minDistance) { minDistance = dist; closest = c; }
+            });
+            return closest;
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+        // --- KẾT THÚC XỬ LÝ ẢNH ---
+
         function paint(cell) {
-            if (isErasing) {
-                cell.style.backgroundColor = 'white';
-                cell.dataset.activeColor = '';
-            } else {
-                cell.style.backgroundColor = currentColor;
-                cell.dataset.activeColor = currentColor;
-            }
+            if (isErasing) { cell.style.backgroundColor = 'white'; cell.dataset.activeColor = ''; }
+            else { cell.style.backgroundColor = currentColor; cell.dataset.activeColor = currentColor; }
             updateOutput();
         }
 
         function clearAll() {
-            document.querySelectorAll('.cell').forEach(c => {
-                c.style.backgroundColor = 'white';
-                c.dataset.activeColor = '';
-            });
+            document.querySelectorAll('.cell').forEach(c => { c.style.backgroundColor = 'white'; c.dataset.activeColor = ''; });
             updateOutput();
         }
 
@@ -246,11 +316,11 @@
 
             let html = '';
             sortedRows.forEach(r => {
-                html += `<div class="py-1 border-b border-slate-50 col-span-full"><b class="text-slate-700">Hàng ${r}:</b></div>`;
+                html += `<div class="py-1 border-b border-slate-50 col-span-full mt-2"><b class="text-slate-700">Hàng ${r}:</b></div>`;
                 Object.keys(data[r]).forEach(color => {
                     const colsArr = data[r][color].sort((a, b) => a - b);
                     html += `<div class="pl-4 flex items-center gap-2 mb-1">
-                                <div class="w-2 h-2 rounded-full" style="background-color: ${color}"></div>
+                                <div class="w-3 h-3 rounded shadow-sm" style="background-color: ${color}"></div>
                                 <span class="text-blue-600 font-bold">${colsArr.join(', ')}</span>
                              </div>`;
                 });
@@ -259,9 +329,7 @@
         }
 
         window.onmouseup = () => isDrawing = false;
-        // Chống menu chuột phải toàn bộ container lưới
         document.getElementById('grid-container').oncontextmenu = (e) => e.preventDefault();
-
         generateGrid();
     </script>
 </body>
